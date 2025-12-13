@@ -1,4 +1,5 @@
 #这是一个初中生Turbowarp转python上手就写代码的结果,有很多问题和搞笑的地方请不要和我说,自己偷笑即可,有些代码确实有点招笑了:P
+# 采用2空格缩进
 '''
 项目名: Project Sandbox Breaker(PSB)项目沙盒破坏者
 项目核心功能: 突破 TurboWarp/在线编辑器的沙盒限制
