@@ -1,5 +1,6 @@
 #这是一个初中生Turbowarp转python上手就写代码的结果,有很多问题和搞笑的地方请不要和我说,自己偷笑即可,有些代码确实有点招笑了:P
 # 采用2空格缩进
+版本 = "0.0.3测试开发版"
 '''
 项目名: Project Sandbox Breaker(PSB)项目沙盒破坏者
 项目核心功能: 突破 TurboWarp/在线编辑器的沙盒限制
@@ -422,7 +423,7 @@ class 广播函数:    #广播函数
 广播 = 广播函数()
 
 所有实例 = []
-class ws_dt:     # ws服务器函数
+class 服务器:     # ws服务器函数
   def __init__(self, 端口=9000, 处理类=None):
     self.端口 = 端口
     self.处理类 = 处理类
@@ -452,8 +453,8 @@ class ws_dt:     # ws服务器函数
     class 自定义处理类(WebSocket):
       def handleConnected(客户端self):
         外层self.所有实例.append(客户端self)
-        客户端self.sendMessage("连接成功！")
-        print("有新客户端链接")
+        客户端self.sendMessage("[OK]连接成功!")
+        print("有新客户端连接")
 
       def handleMessage(客户端self):
         # 分解客户端信息
@@ -472,17 +473,17 @@ class ws_dt:     # ws服务器函数
         print("有客户端断开连接")
     
     self.server = SimpleWebSocketServer('', self.端口, 自定义处理类)
-    print(f"✅ 服务器启动在端口 {self.端口}")
+    print(f"[OK]服务器启动在端口 {self.端口}")
     self.server.serveforever()
   
-  def 说话(self, 内容):  # 改名say→说话
+  def 说话(self, 内容):
     """给所有客户端发消息"""
     for 实例 in self.所有实例:  # 用self.所有实例
       try:
         实例.sendMessage(str(内容))
       except:
         pass  # 发送失败就跳过
-    print(f"广播给 {len(self.所有实例)} 个客户端: {内容}")
+    print(f"给 {len(self.所有实例)} 个客户端发送内容: {内容}")
 
 class 文件:     #管理和下载文件函数
   
@@ -518,7 +519,7 @@ class 文件:     #管理和下载文件函数
       for chunk in r.iter_content(8192):
         f.write(chunk)
 
-# -----------------------------------------------IIII---主程序---IIII----------------------------------------------- 
+# -----------------------------------------------IIII---逻辑和响应处理---IIII----------------------------------------------- 
 # ------------------------------程序广播处理响应函数------------------------------
 def 示列():
   global 客户端指令, 客户端指令数据
@@ -531,19 +532,46 @@ def 示列():
   except Exception as e:
     ws.说话(f'["error","{存1}","{e}"]')
     print(f'["error","{存1}","{e}"]')
-
-def cmd():
-  global 客户端指令, 客户端指令数据
+    
+def 详情():
+  global 客户端指令, 客户端指令数据,版本
   存1 = 客户端指令
   存2 = 客户端指令数据
-  参数 = str(存2[0])
-  结果 = os.system(参数)
-  if 结果 == 0:
-    ws.说话(f'["ok","{存1}","{参数}"]')
-    print(f'["ok","{存1}","{参数}"]')
-  else:
-    ws.说话(f'["error","{存1}","参数不正确"]')
-    print(f'["error","{存1}","参数不正确"]')
+  详情列表 = [
+    "这是一个由VovaLU.QWQ沃瓦制作的用于图形化编程的一个搭配程序",
+    " 该程序可以让图形化玩家访问系统的终端命令并且随着用户的提议增加新功能和指令",
+    f" 现在的版本:{版本}",
+    " 联系方式:邮箱vova1525@foxmail.com",
+    " 官方qq群:971463342"
+  ]
+  信息 = '\n'.join(详情列表)
+  try:
+    ws.说话(f'["ok","{存1}","{信息}"]')
+    print(f'["ok","{存1}","{信息}"]')
+  except Exception as e:
+    ws.说话(f'["error","{存1}","{e}"]')
+    print(f'["error","{存1}","{e}"]')
+
+
+def cmd():
+  try:
+    global 客户端指令, 客户端指令数据
+    存1 = 客户端指令
+    存2 = 客户端指令数据
+    参数 = '\n'.join(存2)
+    结果 = subprocess.run(参数, shell=True, capture_output=True, text=True, timeout=10)
+    返回码 = 结果.returncode
+    if 返回码 == 0:
+      返回内容 = 结果.stdout
+      ws.说话(f'["ok","{存1}","{参数}","{结果}"]')
+      print(f'["ok","{存1}","{参数}","{结果}"]')
+    else:
+      错误信息 = 结果.stderr
+      ws.说话(f'["error","{存1}","参数不正确!错误返回:{错误信息}"]')
+      print(f'["error","{存1}","参数不正确!错误返回:{错误信息}"]')
+  except Exception as e:
+    ws.说话(f'["error","出现严重错误!错误内容:{e}"]')
+    print(f'["error","出现严重错误!错误内容:{e}"]')
 
 def 系统信息():
   global 客户端指令, 客户端指令数据
@@ -625,11 +653,12 @@ def 启动所有响应式广播():
   广播.当收到广播("调用_cmd", cmd)
   广播.当收到广播("MC_获取_参数", 获取MC_json参数)
   广播.当收到广播("MC_合成_参数", 合成MC_json参数)
+  广播.当收到广播("i", 详情)
 启动所有响应式广播()
 # ------------------------------主程序------------------------------
 启动同目录下的程序()
 # 设置服务器启动端口并启动
-ws = ws_dt(端口=55555, 处理类=None)
+ws = 服务器(端口=55555, 处理类=None)
 线程.运行(ws.开启, "ws服务器线程")
 time.sleep(0.1)  # 等待服务器启动
 
