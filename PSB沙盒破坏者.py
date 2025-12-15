@@ -73,7 +73,7 @@ SOFTWARE.
 作者: VovaLU.QWQ沃瓦
 邮箱: vova1525@foxmail.com
 '''
-
+默认路径 = "~"
 # ------------------------------导入和初始化------------------------------
 import GPUtil
 import platform
@@ -90,7 +90,241 @@ import json
 import os
 import threading
 
+默认参数 = {
+  "游戏名":"测试",
+  "游戏目录":"0",
+  "资源目录":"0",
+  "资源索引版本":"0",
+  "用户UUID":"000000000-0000-0000-0000-000000000000",
+  # 试玩版访问令牌,离线写0
+  "访问令牌":"0",
+  # 客户端令牌,离线写0
+  "客户端ID":"0",
+  # Xbox账户ID,离线写0或者空字符""
+  "XboxID":"0",
+  # 用户类型,试玩版要写demo,离线是legacy或者mojang,真实账号写msa
+  "用户类型":"legacy",
+  "游戏目录":"0",
+  "jvm虚拟机参数_java.exe路径":"0",
+  "jvm虚拟机参数_最大内存":"0",
+  "jvm虚拟机参数_标准内存":"0",
+  "jvm虚拟机参数_所有jar文件":"0",
+  }
 # ------------------------------一些打包的类------------------------------
+def 获取json(版本):
+  print(f"接收到任务:获取json版本信息{版本}")
+  URL链 = f"https://bmclapi2.bangbang93.com/version/{版本}/json"
+  try:
+    response = requests.get(URL链)
+    if response.status_code == 200:
+      总数据 = json.loads(response.text)
+      发送 = 总数据["id"]
+      print(f"获取我的世界JSON版本,请求成功\n{发送}")
+      return 总数据
+    else:
+      print(f"获取我的世界JSON版本,请求失败")
+  except Exception as e:
+    print(f"获取我的世界JSON版本数据出错:{e}")
+
+def 初始化文件夹(路径):        
+  global 分类文件夹_主文件夹,分类文件夹_游戏,分类文件夹_JDK,分类文件夹_游戏_实例,分类文件夹_游戏_材质,分类文件夹_游戏_Java库
+  try:
+    if 路径 == "~":
+      分类文件夹_主文件夹 = os.path.join(os.path.expanduser(路径), "xinghui_mc")
+    else:
+      if 检测读写权限(路径) == True:
+        分类文件夹_主文件夹 = os.path.join(路径, "xinghui_mc")
+      else:
+        print("ERROR!路径不合法!")
+        return False
+    print(f"成功合成主文件夹{分类文件夹_主文件夹}")
+    
+    分类文件夹_游戏 = os.path.join(分类文件夹_主文件夹, ".minecraft")
+    print(f"成功合成游戏文件夹{分类文件夹_游戏}")
+    
+    分类文件夹_游戏_实例 = os.path.join(分类文件夹_游戏, "versions")
+    print(f"成功合成游戏实例文件夹{分类文件夹_游戏_实例}")
+    
+    分类文件夹_游戏_材质 = os.path.join(分类文件夹_游戏, "assets")
+    print(f"成功合成游戏材质文件夹{分类文件夹_游戏_材质}")
+    
+    分类文件夹_游戏_Java库 = os.path.join(分类文件夹_游戏, "libraries")
+    print(f"成功合成游戏Java库文件夹{分类文件夹_游戏_Java库}")
+    
+    分类文件夹_JDK = os.path.join(分类文件夹_主文件夹, "JDK")
+    print(f"成功合成JDK文件夹{分类文件夹_JDK}")
+    
+    os.makedirs(分类文件夹_主文件夹, exist_ok=True)
+    os.makedirs(分类文件夹_游戏, exist_ok=True)
+    os.makedirs(分类文件夹_游戏_实例, exist_ok=True)
+    os.makedirs(分类文件夹_游戏_材质, exist_ok=True)
+    os.makedirs(分类文件夹_游戏_Java库, exist_ok=True)
+    os.makedirs(分类文件夹_JDK, exist_ok=True)
+    print("所有文件夹创建或检测成功(yes)")
+    return True
+  except Exception as e:
+    print("所有文件夹创建或检测失败(no)")
+    return False
+
+def 检测读写权限(路径):
+    try:
+        # 创建测试文件
+        测试文件 = os.path.join(路径, "权限测试.tmp")
+        with open(测试文件, "w") as f:
+            f.write("test")
+        
+        # 读取测试文件
+        with open(测试文件, "r") as f:
+            f.read()
+        
+        # 删除测试文件
+        os.remove(测试文件)
+        return True
+    except Exception as e:
+        print(f"error!路径 {路径} 无读写权限: {e}")
+        return False
+
+class 解析():
+  def 生成启动参数(字典数据,设置参数=None):
+    if 设置参数 != None:
+      # 游戏参数
+      游戏名 = 设置参数["游戏名"]
+      游戏目录 = 设置参数["游戏目录"]
+      资源目录 = 设置参数["资源目录"]
+      资源索引版本 = 设置参数["资源索引版本"]
+      用户UUID = 设置参数["用户UUID"]
+      访问令牌 = 设置参数["访问令牌"]
+      客户端ID = 设置参数["客户端ID"]
+      微软XboxID = 设置参数["XboxID"]
+      用户类型 = 设置参数["用户类型"] 
+    
+      # JVM虚拟机参数
+      JavaEXE路径 = 设置参数["jvm虚拟机参数_java.exe路径"]
+      Java虚拟机最大内存 = "-Xmx" + 设置参数["jvm虚拟机参数_最大内存"]
+      Java虚拟机最小内存 = "-Xms" + 设置参数["jvm虚拟机参数_标准内存"]
+    else:
+      # 游戏参数
+      游戏名 = "0"
+      游戏目录 = "0"
+      资源目录 = "0"
+      资源索引版本 = "0"
+      用户UUID = "0"
+      访问令牌 = "0"
+      客户端ID = "0"
+      微软XboxID = "0"
+      用户类型 = "0"
+      
+      # JVM虚拟机参数
+      JavaEXE路径 = "0"
+      Java虚拟机最大内存 = "-Xmx" + "0"
+      Java虚拟机最小内存 = "-Xms" + "0"
+    try:
+      if 字典数据["minimumLauncherVersion"] >= 21:
+        # 解析json
+        json解析_ID = 字典数据["id"]
+        json解析_启动参数配置 = 字典数据["arguments"]
+        json解析_资源索引配置 = 字典数据["assetIndex"]
+        json解析_核心文件下载配置 = 字典数据["downloads"]
+        json解析_java版本要求配置 = 字典数据["javaVersion"]
+        json解析_游戏依赖库配置 = 字典数据["libraries"]
+        json解析_游戏主类配置 = 字典数据["mainClass"]
+        json解析_最低启动器版本要求 = 字典数据["minimumLauncherVersion"]
+        json解析_版本发布时间 = 字典数据["releaseTime"]
+        json解析_版本发行版本 = 字典数据["type"]
+        # 启动参数
+        # 过滤掉字典
+        游戏启动参数列表 = []
+        for 参数 in json解析_启动参数配置["game"]:
+          if isinstance(参数, str):
+              游戏启动参数列表.append(参数)  
+        
+        JVM参数列表 = [
+          "java",    # 
+          "-Xmx",    # 
+          "-Xms",    #
+          "-Xss1M",    # 线程栈大小1MB
+          "-Xmn256m",    # 新生代内存256MB
+          # 对于MC的优化
+          "-Dlog4j.formatMsgNoLookups=true",    # 修复代码漏洞
+          "-XX:+UseG1GC",    #使用G1垃圾回收器
+          "-XX:-UseAdaptiveSizePolicy",    # 禁用自适应大小策略（稳定GC行为）
+          "-XX:-OmitStackTraceInFastThrow",  # 保留完整堆栈跟踪（便于调试）
+          "-Dfml.ignoreInvalidMinecraftCertificates=True",    # 忽略证书验证问题
+          "-Dfml.ignorePatchDiscrepancies=True",    # 忽略版本补丁差异
+          "-Dminecraft.launcher.brand=minecraft-launcher",    # 伪装成正版启动器
+          "-Dminecraft.launcher.version=2.1.3674",    # 伪装启动器版本
+          "-Dnarrator=false",     # 禁用旁白功能
+          # 系统伪装
+          '-Dos.name="Windows 10"',    #伪装系统
+          "-Dos.version=10.0",    # 伪装系统版本
+          "原生库路径",    #java原生库路径
+          "-cp",    #
+          "所有jar",    #所有jar文件
+          "主类"    #游戏主类
+          ]
+        原生库路径 = "-Djava.library.path=" + "./natives"
+        # 合并预设的JVM参数
+        启动参数列表 = JVM参数列表 + 游戏启动参数列表
+        输出2 = 启动参数列表
+        print(f"抓取到游戏启动参数并合并jvm配置\n{启动参数列表}\n")
+        if 设置参数 != None:
+          字符串 = " ".join(启动参数列表)
+          # 整理游戏参数配置
+          字符串 = 字符串.replace("${auth_player_name}", f"{游戏名}")   #游戏名参数
+          字符串 = 字符串.replace("${version_name}", f"{json解析_ID}")   #游戏版本参数
+          字符串 = 字符串.replace("${game_directory}", f"{游戏目录}")   #游戏目录参数
+          字符串 = 字符串.replace("${assets_root}", f"{资源目录}")   #游戏目录里面的资源目录参数
+          字符串 = 字符串.replace("${assets_index_name}", f"{资源索引版本}")   #资源目录的索引版本
+          字符串 = 字符串.replace("${auth_uuid}", f"{用户UUID}")   #顾名思义,写个UUID在里面
+          字符串 = 字符串.replace("${auth_access_token}", f"{访问令牌}")    #访问令牌,离线写0
+          字符串 = 字符串.replace("${clientid}", f"{客户端ID}")   #客户端ID,离线写0,有时也叫做客户端令牌但那是错的
+          字符串 = 字符串.replace("${auth_xuid}", f"{微软XboxID}")    #XboxID,离线写0
+          字符串 = 字符串.replace("${user_type}", f"{用户类型}")    #用户类型,试玩版要写demo,离线是legacy或者mojang,真实账号写msa
+          字符串 = 字符串.replace("${version_type}", f"{json解析_版本发行版本}")   
+          # 整理JVM虚拟机配置
+          字符串 = 字符串.replace("java", f"{JavaEXE路径}")
+          字符串 = 字符串.replace("-Xmx", f"{Java虚拟机最大内存}")
+          字符串 = 字符串.replace("-Xms", f"{Java虚拟机最小内存}")
+          字符串 = 字符串.replace("原生库路径", f"{原生库路径}")
+          字符串 = 字符串.replace("主类", f"{json解析_游戏主类配置}")
+          # 字符串 = 字符串.replace("", f"{}")
+          # 最终播报
+          输出1 = 字符串
+          print(f"解析成功:{字符串}")
+          return 输出1
+        else:
+          return 输出2
+    except Exception as e:
+      print(f"解析失败:{e}")
+      return "0"
+  
+  def 获取并下载所有文件(元组数据):
+    try:
+      if 元组数据["minimumLauncherVersion"] >= 21:
+        # 解析json
+        json解析_ID = 元组数据["id"]
+        下载_核心文件 = 元组数据["downloads"]["client"]["url"]
+        json解析_java版本要求配置 = 元组数据["javaVersion"]
+        json解析_游戏依赖库配置 = 元组数据["libraries"]
+        文件.下载_URL()
+    except Exception as e:
+      print(f"解析失败:{e}")
+
+def 初始化文件夹并读取配置():
+  默认配置文件字典 = {
+    "测试":"测试文本"
+  }
+  配置配置文件字符串 = json.dumps(默认配置文件字典, ensure_ascii=False)
+  if 初始化文件夹(默认路径) == True:
+    配置目录 = os.path.join(分类文件夹_主文件夹, "配置.json")
+    if not 文件.检查(配置目录) == True:
+      print("配置文件不存在,初始化中")
+      文件.写(配置目录, 配置配置文件字符串)
+      print("初始化完毕")
+    配置 = 文件.读(配置目录)
+    配置 = json.loads(配置)
+    return 配置
+
 def 获取性能占用():
   开始耗时 = time.time()
   CPU性能占用 = psutil.cpu_percent(interval=0.1)
@@ -143,7 +377,7 @@ def 启动同目录下的程序():
     subprocess.run(["./qianduan.exe"])
     sys.exit(0)
  else:
-   print("ERROR没有程序")
+   print("ERROR没有程序(如果该程序不在打包后的项目文件中,那这恰恰表明他正在正常的运行)")
 
 def 随机串(长度=3):
   """生成指定长度的随机字符串（包含字母和数字）"""
@@ -237,7 +471,7 @@ class ws_dt:     # ws服务器函数
           外层self.所有实例.remove(客户端self)
         print("有客户端断开连接")
     
-    self.server = SimpleWebSocketServer('localhost', self.端口, 自定义处理类)
+    self.server = SimpleWebSocketServer('', self.端口, 自定义处理类)
     print(f"✅ 服务器启动在端口 {self.端口}")
     self.server.serveforever()
   
@@ -342,12 +576,55 @@ def 性能信息():
   ws.说话(f'["ok","{存1}",{获取性能占用信息}]')
   print(f'["ok","{存1}",{获取性能占用信息}]')
 
+def 获取MC_json参数():
+  global 客户端指令, 客户端指令数据
+  存1 = 客户端指令
+  存2 = 客户端指令数据
+  try:
+    数据 = 存2[0]
+    返回 = 获取json(数据)
+    ws.说话(f'["ok","{存1}","{返回}"]')
+    print(f'["ok","{存1}"","{返回}"]')
+  except Exception as e:
+    ws.说话(f'["error","{存1}","{e}"]')
+    print(f'["error","{存1}","{e}"]')
+
+def 合成MC_json参数():
+  global 客户端指令, 客户端指令数据
+  存1 = 客户端指令
+  存2 = 客户端指令数据
+  try:
+    if 存2[0] != "0":
+      数据 = 存2[0]
+      设置参数 = 存2[1]
+      设置参数 = json.loads(设置参数)
+      返回 = 解析.生成启动参数(数据, 设置参数)
+      ws.说话(f'["ok","{存1}","{返回}"]')
+      print(f'["ok","{存1}","{返回}"]')
+    else:
+      start = time.time()
+      ws.说话(f'["i","{存1}","检测到测试用语,正在测试"]')
+      数据 = 获取json("1.21.8")
+      设置参数 = None
+      返回 = 解析.生成启动参数(数据, 设置参数)
+      end = time.time()
+      end = end - start
+      end = f"{end:.6f}"
+      结果 = [f"{end}",f"{返回}"]
+      ws.说话(f'["ok","{存1}",{结果}]')
+      print(f'["ok","{存1}",{结果}]')
+  except Exception as e:
+    ws.说话(f'["error","{存1}","{e}"]')
+    print(f'["error","{存1}","{e}"]')
+
 # 最终启动
 def 启动所有响应式广播():
   广播.当收到广播("刷新", 刷新)
   广播.当收到广播("信息_性能", 性能信息)
   广播.当收到广播("信息_系统", 系统信息)
   广播.当收到广播("调用_cmd", cmd)
+  广播.当收到广播("MC_获取_参数", 获取MC_json参数)
+  广播.当收到广播("MC_合成_参数", 合成MC_json参数)
 启动所有响应式广播()
 # ------------------------------主程序------------------------------
 启动同目录下的程序()
