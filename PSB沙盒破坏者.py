@@ -1,6 +1,7 @@
 #这是一个初中生Turbowarp转python上手就写代码的结果,有很多问题和搞笑的地方请不要和我说,自己偷笑即可,有些代码确实有点招笑了:P
 # 采用2空格缩进
-版本 = "0.0.4测试开发版"
+版本 = "0.0.5测试开发版"
+mc项目名 = "Fuse_Launcher"
 免责声明 = '''
 Project-Sandbox-Breaker (PSB) - 免责声明
 本工具由一名初中生开发者编写，旨在技术探索和学习。它允许任意Scratch/TurboWarp项目访问您的操作系统，包括但不限于：
@@ -42,6 +43,10 @@ Project-Sandbox-Breaker (PSB) - 免责声明
   {"信息_系统":[]} 获取系统信息
   {"刷新":[]} 刷新,一般情况下用于测试后端程序是否卡死或者检测连接
   {"调用_cmd":["(要写的命令)"]} 顾名思义是调用终端的(在0.0.3版本更新了数据返回,支持了多行输入(有BUG))
+    # MC特别功能
+    {"MC_查服务器":["主机ip","端口(如果有,没有可以不写)"]} 查MC服务器
+    {"MC_获取_参数":["1.21.8(写java我的世界版本)"]}
+    {"MC_合成_参数":["0"]} 这个数组数据写0代表测试,暂且我没有考虑如何传入参数
   {"i":[""]} 获取当前的后端版本和作者信息
 返回数据的解析:
   ["(状态,一般是ok或者error,或者有较为特殊的r(未知))","使用的指令名","如果有输入数据的话这里会有输入数据","如果有返回数据的话这里会有返回数据.否则不会有这个组"]
@@ -52,7 +57,7 @@ Project-Sandbox-Breaker (PSB) - 免责声明
 联系方式:邮箱vova1525@foxmail.com"
 官方qq群:971463342
 但请注意：
-- 这是一个个人开源项目,本产品非商业产品,但支持被别人项目采用并商用分发只要符合免责声明
+- 这是一个个人开源项目,本产品非商业产品,但支持被别人项目采用并商用分发只要符合免责声明(反正我是MIT协议,代码你爱咋咋用出事别找我,和我无关)
 - 技术支持限于力所能及的范围
 - 不保证及时响应或问题解决
 '''
@@ -135,6 +140,11 @@ SOFTWARE.
   }
 # ------------------------------导入和初始化------------------------------
 import time
+#实现查询服务器和详细数据的库
+from mcstatus import JavaServer as java服务器, BedrockServer as 基岩服务器
+import socket
+import concurrent.futures
+
 import GPUtil
 import platform
 import random
@@ -171,6 +181,163 @@ import threading
   "jvm虚拟机参数_所有jar文件":"0",
   }
 # ------------------------------一些打包的类------------------------------
+class 服务器查询():
+  # 需要: from mcstatus import JavaServer as java服务器, BedrockServer as 基岩服务器
+  # 需要: import json
+  # 需要: import threading
+  # 需要: import time
+  #列表数据格式: ["ip或者主机名","如果有端口在这里写端口"]
+
+  def BE(列表数据):
+    超时时长 = 5
+    端口_默认_基岩 = "19132"
+    if len(列表数据) == 1:
+      主机 = 列表数据[0]
+      服务器 = f"{主机}:{端口_默认_基岩}"
+    elif len(列表数据) == 2:
+      主机 = 列表数据[0]
+      端口 = 列表数据[1]
+      服务器 = f"{主机}:{端口}"
+    print(f"合成服务器地址:{服务器}")
+    print("基岩方式查询")
+    try:
+      服务器实例 = 基岩服务器.lookup(f"{服务器}", timeout=超时时长)
+      print(f"查询到服务器实例数据")
+      # 基岩版只有status方法
+      状态 = 服务器实例.status()
+      print(f"查询到数据!{状态}")
+      print(f"基岩服在线: {状态.players.online}, 延迟: {状态.latency}ms")
+      try:
+        # 解析_解析对象
+        motd_解析 = 状态.motd.parsed
+        print(f"对象解析_motd_解析")
+        motd_原始 = 状态.motd.raw
+        print(f"对象解析_motd_原始")
+        玩家_在线 = 状态.players.online
+        print(f"对象解析_玩家_在线")
+        玩家_最大 = 状态.players.max
+        print(f"对象解析_玩家_最大")
+        延迟 = 状态.latency
+        print(f"对象解析_延迟")
+        服务器版本 = 状态.version.name
+        print(f"对象解析_服务器版本")
+        协议版本 = 状态.version.protocol
+        print(f"对象解析_协议版本")
+        地图map = 状态.map_name
+        print(f"对象解析_地图map")
+        游戏模式 = 状态.gamemode
+        print(f"对象解析_游戏模式")
+        # -----------------------------
+        print("对象解析完成,开始解析为json")
+        # 解析_解析所有对象数据为json更加方便
+        解析json = {
+          "m":"BE",
+          "player(=)":f"{玩家_在线}",# 玩家在线值
+          "player(+)":f"{玩家_最大}",# 玩家最大值
+          "motd":f"{motd_原始}",# 原始motd数据
+          "ping":f"{延迟}",# 延迟
+          "s_v":f"{服务器版本}",# 服务器版本
+          "p_v":f"{协议版本}",# 协议版本
+          "icon":"",# 基岩没有icon
+          "map":f"{地图map}",# 地图map
+          "gm":f"{游戏模式}",# 协议版本
+        }
+        数据 = json.dumps(解析json, ensure_ascii=False)
+        打印json = json.dumps(解析json, indent=2, ensure_ascii=False)
+        print(f"解析为json成功:/n{打印json}")
+        print("[OK]基岩方式查询成功")
+        return 数据
+      except Exception as e:
+        print(f"BE解析失败!{e}")
+    except Exception as e:
+      print(f"BE获取失败!{e}")
+  # _________________分割_________________
+  def JE(列表数据):
+    超时时长 = 5
+    if len(列表数据) == 1:
+      主机 = 列表数据[0]
+      服务器 = 主机
+    elif len(列表数据) == 2:
+      主机 = 列表数据[0]
+      端口 = 列表数据[1]
+      服务器 = f"{主机}:{端口}"
+    print(f"合成服务器地址:{服务器}")
+    print("java方式查询")
+    try:
+      # 获取状态信息
+      服务器实例 = java服务器.lookup(f"{服务器}", timeout=超时时长)
+      print(f"查询到服务器实例数据")
+      状态 = 服务器实例.status()
+      print(f"查询到状态数据{状态}")
+      print(f"服务器在线人数: {状态.players.online}, 延迟: {状态.latency}ms")
+      # 此处把q查询给去掉了,大部分服务器不开而且查询很耗时
+      try:
+        # 解析_解析对象
+        motd_解析 = 状态.motd.parsed
+        print(f"对象解析_motd_解析")
+        motd_原始 = 状态.motd.raw
+        print(f"对象解析_motd_原始")
+        玩家_在线 = 状态.players.online
+        print(f"对象解析_玩家_在线")
+        玩家_最大 = 状态.players.max
+        print(f"对象解析_玩家_最大")
+        延迟 = 状态.latency
+        print(f"对象解析_延迟")
+        服务器版本 = 状态.version.name
+        print(f"对象解析_服务器版本")
+        协议版本 = 状态.version.protocol
+        print(f"对象解析_协议版本")
+        favicon = 状态.raw.get('favicon')
+        print(f"对象解析_favicon")
+        # -----------------------------
+        print("对象解析完成,开始解析为json")
+        # 解析_解析所有对象数据为json更加方便
+        解析json = {
+          "m":"JE",
+          "player(=)":f"{玩家_在线}",# 玩家在线值
+          "player(+)":f"{玩家_最大}",# 玩家最大值
+          "motd":f"{motd_原始}",# 原始motd数据
+          "ping":f"{延迟}",# 延迟
+          "s_v":f"{服务器版本}",# 服务器版本
+          "p_v":f"{协议版本}",# 协议版本
+          "icon":f"{favicon}"# URL格式的icon(logo)
+        }
+        数据 = json.dumps(解析json, ensure_ascii=False)
+        打印json = json.dumps(解析json, indent=2, ensure_ascii=False)
+        print(f"解析为json成功:/n{打印json}")
+        print("[OK]java方式查询成功")
+        return 数据
+      except Exception as e:
+        print(f"JE解析失败!{e}")
+    except Exception as e:
+      print(f"JE获取失败!{e}")
+  # _________________分割_________________
+  def 通查(列表数据):
+    class 结果容器:  # 临时类当容器
+      pass
+    
+    def JE任务():
+      结果容器.JE结果 = 服务器查询.JE(列表数据)  # 存结果
+    
+    def BE任务():
+      结果容器.BE结果 = 服务器查询.BE(列表数据)  # 存结果
+    
+    JE线程 = threading.Thread(target=JE任务, daemon=True)
+    BE线程 = threading.Thread(target=BE任务, daemon=True)
+    
+    JE线程.start()
+    BE线程.start()
+    
+    for i in range(50):  # 检查50次,5秒
+      time.sleep(0.1)
+      if hasattr(结果容器, 'JE结果'):  # 检查JE
+        return 结果容器.JE结果
+      if hasattr(结果容器, 'BE结果'):  # 检查BE
+        return 结果容器.BE结果
+    
+    print("timeout")
+    return None
+
 def 获取json(版本):
   print(f"接收到任务:获取json版本信息{版本}")
   URL链 = f"https://bmclapi2.bangbang93.com/version/{版本}/json"
@@ -463,7 +630,7 @@ class 线程函数:     #线程函数(让别的函数跑在子线程)
     else:
       线程名字 = f"{线程名字}_{随机串(4)}"
     线程变量 = threading.Thread(target=函数, daemon=True, name=线程名字)
-    线程变量 .start()
+    线程变量.start()
     print(f"由{函数}启动的的线程'{线程名字}'开始运行")
 线程 = 线程函数()
 
@@ -586,6 +753,22 @@ def 示列():
     # 这里写代码
     ws.说话(f'["ok","{存1}"]')
     print(f'["ok","{存1}"]')
+  except Exception as e:
+    ws.说话(f'["error","{存1}","{e}"]')
+    print(f'["error","{存1}","{e}"]')
+
+def 我的世界服务器查询():
+  global 客户端指令, 客户端指令数据
+  存1 = 客户端指令
+  存2 = 客户端指令数据
+  try:
+    结果 = 服务器查询.通查(存2)
+    if 结果 != None:
+      ws.说话(f'["ok","{存1}",{结果}]')
+      print(f'["ok","{存1}",{结果}]')
+    else:
+      ws.说话(f'["error","{存1}","参数不正确"]')
+      print(f'["error","{存1}","参数不正确"]')
   except Exception as e:
     ws.说话(f'["error","{存1}","{e}"]')
     print(f'["error","{存1}","{e}"]')
@@ -722,12 +905,12 @@ def 启动所有响应式广播():
   广播.当收到广播("MC_获取_参数", 获取MC_json参数)
   广播.当收到广播("MC_合成_参数", 合成MC_json参数)
   广播.当收到广播("i", 详情)
+  广播.当收到广播("MC_查服务器", 我的世界服务器查询)
 启动所有响应式广播()
 # ------------------------------主程序------------------------------
 print(免责声明) #免责
 print(详细信息) #详细信息
 
-mc项目名 = "Fuse_Launcher"
 初始化文件夹(默认路径)
 print(初始化文件夹并读取配置())
 
@@ -741,5 +924,8 @@ time.sleep(0.1)  # 等待服务器启动
 加载耗时 = 加载完成时间 - 加载初始时间
 加载耗时 = round(加载耗时, 5)
 print(f"启动耗时:{加载耗时}秒")
+
+# 测试部分
+
 while True:
   pass
